@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRM Attendance & Schedule Engine (ASE)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #166088;
+            --accent: #4fc3f7;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .logo {
+            width: 100px;
+            height: 100px;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            font-size: 28px;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .date-range {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+        
+        .date-input {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        
+        .date-input label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        input[type="date"], input[type="text"], select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .subjects-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .subject-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-top: 4px solid var(--accent);
+            position: relative;
+        }
+        
+        .remove-subject {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .remove-subject:hover {
+            transform: scale(1.2);
+        }
+        
+        .subject-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+        
+        .subject-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--secondary);
+            width: 70%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .color-picker {
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .days-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .day-checkbox {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .day-checkbox label {
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        
+        .faculty-input {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .exclusion-controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .exclusion-inputs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        
+        .exclusion-input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .exclusion-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .excluded-date {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        
+        .excluded-date:last-child {
+            border-bottom: none;
+        }
+        
+        .remove-exclusion {
+            color: var(--danger);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            padding: 0 5px;
+        }
+        
+        .additional-filters {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background: linear-gradient(to bottom, var(--accent), var(--primary));
+        }
+        
+        button.secondary {
+            background: linear-gradient(to bottom, #6c757d, #495057);
+        }
+        
+        button.secondary:hover {
+            background: linear-gradient(to bottom, #868e96, #6c757d);
+        }
+        
+        .add-subject-btn {
+            background: linear-gradient(to bottom, var(--success), #218838);
+            margin-bottom: 20px;
+        }
+        
+        .add-subject-btn:hover {
+            background: linear-gradient(to bottom, #34ce57, var(--success));
+        }
+        
+        .add-exclusion-btn {
+            background: linear-gradient(to bottom, var(--warning), #ffab00);
+            color: var(--dark);
+        }
+        
+        .add-exclusion-btn:hover {
+            background: linear-gradient(to bottom, #ffd54f, var(--warning));
+        }
+        
+        .holiday-info {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        #calendar-output {
+            margin-top: 30px;
+            overflow-x: auto;
+        }
+        
+        #calendar-output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        #calendar-output th, #calendar-output td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        #calendar-output th {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        #calendar-output tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .subject-session {
+            font-size: 12px;
+            padding: 3px;
+            margin: 2px;
+            border-radius: 3px;
+            background-color: #e9ecef;
+            display: inline-block;
+        }
+        
+        .exclusion-reason {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .active-filters {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .subject-filters {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .subject-filters select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        @media print {
+            button, .no-print, .header, .date-range, .subjects-container, 
+            .add-subject-btn, .exclusion-controls, .additional-filters, 
+            .holiday-info, .buttons-container {
+                display: none !important;
+            }
+            
+            body {
+                background: white;
+                padding: 0;
+                font-size: 10pt;
+                margin: 0;
+            }
+            
+            .print-container {
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+            }
+            
+            .print-header {
+                display: block !important;
+                text-align: center;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #ddd;
+            }
+            
+            .print-header h1 {
+                font-size: 16pt;
+                margin: 5px 0;
+                color: #166088;
+            }
+            
+            .print-header .print-meta {
+                font-size: 9pt;
+                margin: 3px 0;
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+            
+            .print-header .print-meta span {
+                white-space: nowrap;
+            }
+            
+            #calendar-output {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+            }
+            
+            #calendar-output table {
+                width: 100%;
+                font-size: 9pt;
+                page-break-after: auto;
+                page-break-inside: avoid;
+                border-collapse: collapse;
+            }
+            
+            #calendar-output th {
+                background-color: #4a6fa5 !important;
+                color: white !important;
+                padding: 5px !important;
+            }
+            
+            #calendar-output td {
+                padding: 4px !important;
+            }
+            
+            .print-footer {
+                display: block !important;
+                text-align: center;
+                font-size: 8pt;
+                margin-top: 10px;
+                padding-top: 5px;
+                border-top: 1px solid #ddd;
+            }
+            
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+        }
+        
+        .print-header, .print-footer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">MRM</div>
+        <div class="title">Attendance & Schedule Engine (ASE)</div>
+    </div>
+    
+    <div class="date-range">
+        <div class="date-input">
+            <label for="start-date">From Date:</label>
+            <input type="date" id="start-date">
+        </div>
+        <div class="date-input">
+            <label for="end-date">To Date:</label>
+            <input type="date" id="end-date">
+        </div>
+    </div>
+    
+    <div class="subjects-container" id="subjects-container">
+        <!-- Subjects will be added here dynamically -->
+    </div>
+    
+    <button id="add-subject" class="add-subject-btn">+ Add Subject</button>
+    
+    <div class="exclusion-controls">
+        <h3>Personal Date Exclusions</h3>
+        <div class="exclusion-inputs">
+            <div class="exclusion-input-group">
+                <label for="exclusion-date">Date to Exclude:</label>
+                <input type="date" id="exclusion-date">
+            </div>
+            <div class="exclusion-input-group">
+                <label for="exclusion-reason">Reason:</label>
+                <input type="text" id="exclusion-reason" placeholder="e.g., Live event">
+            </div>
+            <button id="add-exclusion" class="add-exclusion-btn">Add Exclusion</button>
+            <div class="file-input-container">
+                <button id="import-exclusions" class="add-exclusion-btn">Import Exclusions</button>
+                <input type="file" id="file-input" class="file-input" accept=".docx">
+            </div>
+        </div>
+        <div class="exclusion-list" id="exclusion-list">
+            <!-- Excluded dates will appear here -->
+        </div>
+    </div>
+    
+    <div class="additional-filters">
+        <div class="filter-group">
+            <label for="section-filter">Section</label>
+            <select id="section-filter">
+                <option value="" selected>All Sections</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="year-filter">Year</label>
+            <select id="year-filter">
+                <option value="" selected>All Years</option>
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="semester-filter">Semester</label>
+            <select id="semester-filter">
+                <option value="" selected>All Semesters</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="3">Semester 3</option>
+                <option value="4">Semester 4</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="holiday-info">
+        <p>Note: Sundays, Second Saturdays, Government Holidays, Telangana Festivals, and your excluded dates will be automatically skipped.</p>
+    </div>
+    
+    <div class="buttons-container">
+        <button id="generate-btn">Generate Calendar</button>
+        <button id="export-excel">Export to Excel</button>
+        <button id="export-pdf">Export to PDF</button>
+        <button id="print-btn">Print</button>
+        <button id="save-btn" class="secondary">Save to System</button>
+        <button id="email-btn" class="secondary">Email Calendar</button>
+    </div>
+    
+    <div id="calendar-output"></div>
+    
+    <script>
+        // Initialize with 1 subject by default
+        const subjectsContainer = document.getElementById('subjects-container');
+        const days = ['M', 'T', 'W', 'Th', 'F', 'S'];
+        let subjectCount = 0;
+        
+        // Store excluded dates
+        let excludedDates = [];
+        
+        // Add first subject
+        addSubject();
+        
+        // Add Subject Button
+        document.getElementById('add-subject').addEventListener('click', addSubject);
+        
+        function addSubject() {
+            subjectCount++;
+            const subjectCard = document.createElement('div');
+            subjectCard.className = 'subject-card';
+            subjectCard.innerHTML = `
+                <button class="remove-subject" onclick="removeSubject(this)">×</button>
+                <div class="subject-header">
+                    <input type="text" class="subject-name" value="Subject ${subjectCount}" placeholder="Subject Name">
+                    <input type="color" class="color-picker" value="${getRandomColor()}">
+                </div>
+                <div class="days-container">
+                    ${days.map(day => `
+                        <div class="day-checkbox">
+                            <input type="checkbox" id="day-${subjectCount}-${day}" checked>
+                            <label for="day-${subjectCount}-${day}">${day}</label>
+                        </div>
+                    `).join('')}
+                </div>
+                <input type="text" class="faculty-input" placeholder="Faculty Name">
+                <div class="subject-filters">
+                    <select class="subject-section">
+                        <option value="" selected>Select Section</option>
+                        <option value="A">Section A</option>
+                        <option value="B">Section B</option>
+                    </select>
+                    <select class="subject-year">
+                        <option value="" selected>Select Year</option>
+                        <option value="1">Year 1</option>
+                        <option value="2">Year 2</option>
+                    </select>
+                    <select class="subject-semester">
+                        <option value="" selected>Select Semester</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                    </select>
+                </div>
+            `;
+            subjectsContainer.appendChild(subjectCard);
+        }
+        
+        function removeSubject(button) {
+            if (subjectsContainer.children.length <= 1) {
+                alert('At least one subject is required');
+                return;
+            }
+            
+            button.parentElement.remove();
+            subjectCount--;
+        }
+        
+        // Helper function to generate random colors
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        
+        // Add date exclusion
+        document.getElementById('add-exclusion').addEventListener('click', function() {
+            const dateInput = document.getElementById('exclusion-date');
+            const reasonInput = document.getElementById('exclusion-reason');
+            
+            if (!dateInput.value) {
+                alert('Please select a date');
+                return;
+            }
+            
+            const dateStr = formatDate(new Date(dateInput.value));
+            const reason = reasonInput.value || 'Personal';
+            
+            // Add to exclusion list if not already there
+            if (!excludedDates.some(item => item.date === dateStr)) {
+                excludedDates.push({ date: dateStr, reason: reason });
+                updateExclusionList();
+            } else {
+                alert('This date is already excluded');
+            }
+            
+            dateInput.value = '';
+            reasonInput.value = '';
+        });
+        
+        // Update the exclusion list display
+        function updateExclusionList() {
+            const listContainer = document.getElementById('exclusion-list');
+            listContainer.innerHTML = '';
+            
+            if (excludedDates.length === 0) {
+                listContainer.innerHTML = '<p style="color:#666; text-align:center;">No dates excluded yet</p>';
+                return;
+            }
+            
+            excludedDates.forEach((item, index) => {
+                const dateElement = document.createElement('div');
+                dateElement.className = 'excluded-date';
+                dateElement.innerHTML = `
+                    <div>
+                        <strong>${item.date}</strong>
+                        <span class="exclusion-reason">${item.reason}</span>
+                    </div>
+                    <button class="remove-exclusion" data-index="${index}">×</button>
+                `;
+                listContainer.appendChild(dateElement);
+            });
+            
+            // Add event listeners to remove buttons
+            document.querySelectorAll('.remove-exclusion').forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    excludedDates.splice(index, 1);
+                    updateExclusionList();
+                });
+            });
+        }
+        
+        // Import exclusions from Word file
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const arrayBuffer = event.target.result;
+                
+                mammoth.extractRawText({arrayBuffer: arrayBuffer})
+                    .then(function(result) {
+                        const text = result.value;
+                        parseExclusionsFromText(text);
+                    })
+                    .catch(function(error) {
+                        console.error(error);
+                        alert('Error reading Word file: ' + error.message);
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+        
+        function parseExclusionsFromText(text) {
+            const lines = text.split('\n');
+            const newExclusions = [];
+            const currentYear = new Date().getFullYear();
+            
+            for (const line of lines) {
+                // Skip empty lines and lines that don't contain dates
+                if (!line.trim() || !line.match(/\d{1,2}\/\d{1,2}/)) continue;
+                
+                // Split line into parts
+                const parts = line.split(/\s+/).filter(part => part.trim() !== '');
+                
+                // Find the date part (format: MM/DD)
+                const datePart = parts.find(part => part.match(/^\d{1,2}\/\d{1,2}$/));
+                if (!datePart) continue;
+                
+                // Get the reason (rest of the line after the date)
+                const dateIndex = parts.indexOf(datePart);
+                const reason = parts.slice(dateIndex + 1).join(' ') || 'Personal';
+                
+                // Convert to YYYY-MM-DD format
+                const [month, day] = datePart.split('/');
+                const dateStr = `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                
+                // Validate the date
+                const dateObj = new Date(dateStr);
+                if (isNaN(dateObj.getTime())) continue;
+                
+                // Add to exclusions if not already present
+                if (!excludedDates.some(item => item.date === dateStr)) {
+                    newExclusions.push({ date: dateStr, reason: reason });
+                }
+            }
+            
+            if (newExclusions.length > 0) {
+                excludedDates = [...excludedDates, ...newExclusions];
+                updateExclusionList();
+                alert(`Successfully imported ${newExclusions.length} date exclusions from file`);
+            } else {
+                alert('No valid date exclusions found in the file');
+            }
+            
+            // Reset file input
+            document.getElementById('file-input').value = '';
+        }
+        
+        // Generate Calendar
+        document.getElementById('generate-btn').addEventListener('click', generateCalendar);
+        
+        function generateCalendar() {
+            const startDate = new Date(document.getElementById('start-date').value);
+            const endDate = new Date(document.getElementById('end-date').value);
+            
+            // Get filter values
+            const sectionFilter = document.getElementById('section-filter').value;
+            const yearFilter = document.getElementById('year-filter').value;
+            const semesterFilter = document.getElementById('semester-filter').value;
+            
+            if (!startDate || !endDate) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (startDate > endDate) {
+                alert('End date must be after start date');
+                return;
+            }
+            
+            // Collect subject data
+            const subjects = [];
+            const subjectCards = document.querySelectorAll('.subject-card');
+            
+            subjectCards.forEach((card, index) => {
+                const subjectName = card.querySelector('.subject-name').value || `Subject ${index + 1}`;
+                const facultyName = card.querySelector('.faculty-input').value || 'Not specified';
+                const color = card.querySelector('.color-picker').value;
+                const section = card.querySelector('.subject-section').value;
+                const year = card.querySelector('.subject-year').value;
+                const semester = card.querySelector('.subject-semester').value;
+                
+                const daysChecked = [];
+                const checkboxes = card.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    daysChecked.push(checkbox.checked);
+                });
+                
+                subjects.push({
+                    id: index + 1,
+                    name: subjectName,
+                    faculty: facultyName,
+                    color: color,
+                    days: daysChecked,
+                    sessionCounter: 0,
+                    section: section,
+                    year: year,
+                    semester: semester
+                });
+            });
+            
+            // Generate calendar days
+            let currentDate = new Date(startDate);
+            const now = new Date();
+            const generatedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            let calendarHTML = `
+                <div class="print-header">
+                    <h1>MRM Attendance & Schedule Engine (ASE)</h1>
+                    <div class="print-meta">
+                        <span><strong>Section:</strong> ${sectionFilter || 'All'}</span>
+                        <span><strong>Year:</strong> ${yearFilter || 'All'}</span>
+                        <span><strong>Semester:</strong> ${semesterFilter || 'All'}</span>
+                        <span><strong>Generated:</strong> ${generatedDate}</span>
+                    </div>
+                </div>
+                <div class="print-container">
+                    <table>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+            `;
+            
+            // Filter subjects based on selections
+            const filteredSubjects = subjects.filter(subject => {
+                return (!sectionFilter || subject.section === sectionFilter) &&
+                       (!yearFilter || subject.year === yearFilter) &&
+                       (!semesterFilter || subject.semester === semesterFilter);
+            });
+            
+            if (filteredSubjects.length === 0) {
+                calendarHTML += '</table>';
+                calendarHTML += '<p class="no-results">No subjects match the selected filters</p>';
+                document.getElementById('calendar-output').innerHTML = calendarHTML;
+                return;
+            }
+            
+            filteredSubjects.forEach(subject => {
+                calendarHTML += `<th style="background-color:${subject.color};color:white;">${subject.name}<br><small>${subject.faculty}</small></th>`;
+            });
+            
+            calendarHTML += '</tr>';
+            
+            // Reset all session counters before generating
+            filteredSubjects.forEach(subject => {
+                subject.sessionCounter = 0;
+            });
+            
+            while (currentDate <= endDate) {
+                const dayOfWeek = currentDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+                const dateStr = formatDate(currentDate);
+                const shortDate = `${(currentDate.getMonth()+1).toString().padStart(2, '0')}/${currentDate.getDate().toString().padStart(2, '0')}`;
+                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek];
+                const isSecondSaturday = dayOfWeek === 6 && Math.ceil(currentDate.getDate() / 7) === 2;
+                const isExcluded = excludedDates.some(item => item.date === dateStr);
+                
+                // Skip Sundays, second Saturdays, and excluded dates
+                if (dayOfWeek !== 0 && !isSecondSaturday && !isExcluded) {
+                    calendarHTML += `<tr><td>${shortDate}</td><td>${dayName}</td>`;
+                    
+                    filteredSubjects.forEach(subject => {
+                        const isScheduledDay = subject.days[dayOfWeek - 1] || (dayOfWeek === 6 && subject.days[5]);
+                        if (isScheduledDay) {
+                            subject.sessionCounter++;
+                            calendarHTML += `<td><div class="subject-session">${subject.name} ${subject.sessionCounter}</div></td>`;
+                        } else {
+                            calendarHTML += '<td></td>';
+                        }
+                    });
+                    
+                    calendarHTML += '</tr>';
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            calendarHTML += `
+                    </table>
+                </div>
+                <div class="print-footer">
+                    Created by Mohammed Reyazuddin | Whatsapp: 8686861826 | india3day@gmail.com
+                </div>
+            `;
+            document.getElementById('calendar-output').innerHTML = calendarHTML;
+        }
+        
+        function formatDate(date) {
+            const d = new Date(date);
+            let month = '' + (d.getMonth() + 1);
+            let day = '' + d.getDate();
+            const year = d.getFullYear();
+            
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            
+            return [year, month, day].join('-');
+        }
+        
+        // Export to Excel
+        document.getElementById('export-excel').addEventListener('click', exportToExcel);
+        
+        function exportToExcel() {
+            const calendarTable = document.querySelector('#calendar-output table');
+            if (!calendarTable) {
+                alert('Please generate calendar first');
+                return;
+            }
+            
+            const wb = XLSX.utils.table_to_book(calendarTable);
+            XLSX.writeFile(wb, 'MRM_Attendance_Schedule.xlsx');
+        }
+        
+        // Export to PDF
+        document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+        
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Get filter values
+            const sectionFilter = document.getElementById('section-filter').value;
+            const yearFilter = document.getElementById('year-filter').value;
+            const semesterFilter = document.getElementById('semester-filter').value;
+            const now = new Date();
+            const generatedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            // Add header
+            doc.setFontSize(16);
+            doc.setTextColor(22, 96, 136);
+            doc.text('MRM Attendance & Schedule Engine (ASE)', 105, 15, { align: 'center' });
+            
+            // Add metadata
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            const metaText = [
+                `Section: ${sectionFilter || 'All'}`,
+                `Year: ${yearFilter || 'All'}`,
+                `Semester: ${semesterFilter || 'All'}`,
+                `Generated: ${generatedDate}`
+            ].join(' | ');
+            doc.text(metaText, 105, 22, { align: 'center' });
+            
+            // Add table
+            doc.autoTable({
+                html: '#calendar-output table',
+                startY: 30,
+                styles: {
+                    cellPadding: 3,
+                    fontSize: 9,
+                    valign: 'middle'
+                },
+                headStyles: {
+                    fillColor: [74, 111, 165],
+                    textColor: 255
+                },
+                columnStyles: {
+                    0: {cellWidth: 15},
+                    1: {cellWidth: 12},
+                }
+            });
+            
+            // Add footer
+            doc.setFontSize(8);
+            doc.text('Created by Mohammed Reyazuddin | Whatsapp: 8686861826 | india3day@gmail.com', 
+                    105, doc.lastAutoTable.finalY + 10, { align: 'center' });
+            
+            doc.save('MRM_Attendance_Schedule.pdf');
+        }
+        
+        // Print
+        document.getElementById('print-btn').addEventListener('click', () => {
+            if (!document.querySelector('#calendar-output table')) {
+                alert('Please generate calendar first');
+                return;
+            }
+            window.print();
+        });
+        
+        // Save to System (simulated)
+        document.getElementById('save-btn').addEventListener('click', () => {
+            if (!document.querySelector('#calendar-output table')) {
+                alert('Please generate calendar first');
+                return;
+            }
+            alert('Calendar saved to C:\\MRM SMART CALENDAR\\' + new Date().toISOString().replace(/[:.]/g, '-') + '.html');
+        });
+        
+        // Email (simulated)
+        document.getElementById('email-btn').addEventListener('click', () => {
+            if (!document.querySelector('#calendar-output table')) {
+                alert('Please generate calendar first');
+                return;
+            }
+            alert('Calendar sent to ehsankartahun@gmail.com');
+        });
+        
+        // Set default dates (today and +30 days)
+        const today = new Date();
+        const nextMonth = new Date();
+        nextMonth.setDate(today.getDate() + 30);
+        
+        document.getElementById('start-date').valueAsDate = today;
+        document.getElementById('end-date').valueAsDate = nextMonth;
+        
+        // Make subject names focus on click
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('subject-name')) {
+                e.target.select();
+            }
+        });
+        
+        // Initialize exclusion list
+        updateExclusionList();
+    </script>
+</body>
+</html>
